@@ -1,0 +1,111 @@
+{
+  "theme_archetype": {
+    "theme": "Dark",
+    "archetype": "Archetype 4 (Swiss & High-Contrast - Dark Mode Variant) with Luxury Undertones",
+    "rationale": "OmniVibe is a premium AI-powered project orchestration dashboard. Users expect a calm, dark-first workspace. We use deep neutral zinc greys to prevent eye strain during extended sessions. The stark contrast of white typography and structural borders provides absolute clarity, while a 'Signal Orange' accent is reserved exclusively for AI generation actions to guide focus."
+  },
+  "typography": {
+    "heading_font": "Cabinet Grotesk",
+    "body_font": "Manrope",
+    "mono_font": "JetBrains Mono",
+    "scale": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-none",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight leading-tight",
+      "h3": "text-xl sm:text-2xl tracking-tight",
+      "h4": "text-lg sm:text-xl font-medium",
+      "body": "text-base leading-relaxed text-zinc-300",
+      "small": "text-sm text-zinc-400",
+      "overline": "text-xs uppercase tracking-[0.2em] font-medium text-zinc-500"
+    },
+    "rules": [
+      "Avoid default bolding. Use font-medium or font-light to create tension.",
+      "Never use generic Inter for headings.",
+      "For database schemas and API endpoints, use mono_font (JetBrains Mono) for field names and URLs to establish a 'developer tool' aesthetic."
+    ]
+  },
+  "colors": {
+    "mode": "Dark mode default",
+    "background": {
+      "default": "#09090B",
+      "card": "#18181B",
+      "panel": "#121214",
+      "hover": "#27272A"
+    },
+    "text": {
+      "primary": "#FAFAFA",
+      "secondary": "#A1A1AA",
+      "muted": "#71717A"
+    },
+    "accent": {
+      "ai_magic": "#FF4400",
+      "ai_magic_hover": "#E63D00",
+      "ai_magic_subtle": "rgba(255, 68, 0, 0.1)"
+    },
+    "status": {
+      "success": "#22C55E",
+      "warning": "#F59E0B",
+      "error": "#EF4444",
+      "info": "#3B82F6"
+    },
+    "border": {
+      "default": "rgba(255, 255, 255, 0.1)",
+      "focus": "rgba(255, 255, 255, 0.3)",
+      "ai_focus": "#FF4400"
+    }
+  },
+  "layout": {
+    "strategy": "3-Column App Shell",
+    "sidebar": "w-64 border-r border-zinc-800 bg-[#09090B] flex flex-col",
+    "main_content": "flex-1 overflow-y-auto bg-[#09090B]",
+    "ai_panel": "w-80 border-l border-zinc-800 bg-[#121214] flex flex-col shadow-[inset_1px_0_0_rgba(255,255,255,0.02)]",
+    "spacing": "Generous spacing. Use p-6 or p-8 inside primary cards. gap-6 for bento grid items.",
+    "container_radius": "rounded-xl for cards, rounded-md for inputs/buttons.",
+    "grid": "Use grid-cols-1 md:grid-cols-12 with varied spans (Bento Grid) for the Overview tab."
+  },
+  "components": {
+    "cards": "Flat background (#18181B), 1px solid border (border-zinc-800). No box-shadow. On hover, apply subtle background shift to #27272A.",
+    "buttons": {
+      "primary": "bg-white text-zinc-950 hover:bg-zinc-200 transition-colors rounded-md font-medium px-4 py-2",
+      "secondary": "bg-zinc-900 text-zinc-100 hover:bg-zinc-800 border border-zinc-800 transition-colors rounded-md px-4 py-2",
+      "ghost": "hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors rounded-md px-4 py-2",
+      "ai_action": "bg-[#FF4400] text-white hover:bg-[#E63D00] shadow-[0_0_15px_rgba(255,68,0,0.3)] transition-all rounded-md px-4 py-2"
+    },
+    "inputs": "bg-zinc-950 border border-zinc-800 focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 text-zinc-100 placeholder-zinc-600 rounded-md",
+    "glassmorphism": "Use purely for the sticky header in the main content area: backdrop-blur-xl bg-[#09090B]/80 border-b border-zinc-800.",
+    "kanban": "Columns use bg-zinc-900/50 rounded-xl p-4. Task cards are bg-zinc-900 border border-zinc-800 p-3 rounded-lg hover:border-zinc-600 transition-colors.",
+    "tabs": "Shadcn Tabs but stripped of visual noise. Active tab gets text-white and a 2px bottom border of #FAFAFA. Inactive tabs are text-zinc-500.",
+    "schema_tables": "Use border-collapse with border-b border-zinc-800 for rows. Field types in JetBrains Mono.",
+    "ai_chat_bubbles": "User: border border-zinc-800 bg-zinc-900/50. AI: bg-[#FF4400]/10 border border-[#FF4400]/20. Both rounded-lg p-4."
+  },
+  "motion": {
+    "hover": "Subtle background color shifts and transform -translate-y-[1px] for interactive cards.",
+    "transitions": "transition-all duration-200 ease-out",
+    "page_load": "Staggered fade-in (opacity 0 to 1, translate-y-4 to 0) for lists and dashboard metrics.",
+    "ai_loading": "Use a pulsing animation on the AI magic accent color to indicate processing."
+  },
+  "assets": {
+    "icons": "lucide-react for all system iconography. Keep stroke-width to 1.5 for elegance.",
+    "images": [
+      {
+        "url": "https://images.pexels.com/photos/14963655/pexels-photo-14963655.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "landing_hero",
+        "description": "Dark modern office workspace to serve as the background of the landing page hero section. Use with a heavy overlay (e.g., bg-black/60)."
+      },
+      {
+        "url": "https://images.pexels.com/photos/6485524/pexels-photo-6485524.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "abstract_texture",
+        "description": "Dark textured surface for card backgrounds or the empty state of the project workspace to add premium depth."
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "NOTE: Codebase uses .js (React), NOT .tsx. Implement all components in standard JavaScript.",
+    "Install and use 'lucide-react' for icons.",
+    "Setup Google Fonts or local font imports for 'Cabinet Grotesk', 'Manrope', and 'JetBrains Mono'.",
+    "Use pure Tailwind classes for layout structures (flex/grid) instead of over-relying on restrictive generic components.",
+    "Implement Shadcn/UI for inputs, dialogs, selects, and dropdowns, but heavily customize them to match the dark zinc aesthetic defined here.",
+    "Add 'data-testid' attributes to ALL interactive elements (buttons, inputs, tabs, project cards).",
+    "Ensure the right-side AI assistant panel remains fixed/sticky while the main content scrolls.",
+    "For the Landing Page, place the 'landing_hero' image behind the main header with a heavy black/zinc gradient overlay so white text remains accessible."
+  ]
+}
