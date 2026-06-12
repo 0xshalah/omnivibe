@@ -1,0 +1,39 @@
+{
+  "summary": "Comprehensive backend + frontend testing of OmniVibe. 23/23 pytest backend tests pass (auth, cross-user isolation, all AI generators, PRD versioning, checklist toggle, exports md+pdf, history). Full UI smoke pass across landing, dashboard, new-project dialog, theme toggle, all 10 workspace tabs, PRD editor save, roadmap columns + feature detail dialog, testing checklist toggle, export rows, build-prompt copy, and AI panel. One critical infrastructure finding: cloud ingress returns HTML 502 to the client when a synchronous AI generation exceeds ~100s, even though the backend completes and persists results.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/projects/{id}/generate/{type}", "issue": "Ingress proxy returns HTML 502 if backend takes >~100s. PRD/screens/schemas (~60s each) work; build_prompt borderline at ~89s; full blueprint flow (sequential gpt-5.5 calls) will exceed this. Data still persists because backend completes. Frontend will incorrectly surface this as a failure."},
+      {"endpoint": "GET /api/projects/{id}/build-prompt", "issue": "Returns null (not 404) when build prompt has not been generated yet. Inconsistent with PRD GET pattern; OK but worth documenting."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Full blueprint / long generation", "issue": "If ingress 502s on a generation request, the UI's catch handler likely shows an error toast even though the data has been persisted. After a 502 the UI should re-fetch the corresponding GET endpoint to detect server-side success and reconcile state.", "affected_selectors": ["ai-generate-blueprint-button", "ai-action-*"]}
+    ],
+    "design_issues": [
+      {"screen": "Feature detail / dialogs", "issues": ["A11y warning: DialogContent missing `Description` or `aria-describedby`. Add VisuallyHidden DialogDescription or aria-describedby to satisfy radix-ui requirement."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_omnivibe_backend.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Address ingress 100s timeout for long AI calls: break long generators into multiple shorter LLM calls, or move /generate to background tasks with polling, or wrap the UI catch to refetch and reconcile on 502/504 (data is usually persisted).",
+    "Add DialogDescription (or aria-describedby) to feature-detail-dialog and new-project-dialog to clear the radix a11y warning.",
+    "Consider returning 404 (not null) from GET /api/projects/{id}/build-prompt when none exists, for consistency."
+  ],
+  "critical_code_review_comments": [
+    "ai_service.generate is fully synchronous in the request thread; for build_prompt and the planned full-blueprint flow this will routinely exceed any reasonable HTTP timeout. Move to background job + status endpoint.",
+    "PUT /api/projects/{id}/prd always inserts a new document (version bump) even for a no-op save. Consider skipping insert when content_markdown is unchanged to avoid version inflation.",
+    "ChecklistItemUpdate PUT does not validate checklist_type literal ('testing'|'deployment') the way GET does. Add the same guard for safety.",
+    "Export endpoint exposes doc='blueprint' which composes ALL docs into one — fine, but document.title check should 404 cleanly when none of the constituent docs exist (currently it'll just produce a thin markdown)."
+  ],
+  "updated_files": ["/app/backend/tests/test_omnivibe_backend.py"],
+  "success_rate": {"backend": "100% (23/23)", "frontend": "100% on critical flows tested"},
+  "test_credentials": "Bearer test_session_omnivibe_2026 (user test-user-omnivibe) + Bearer test_session_omnivibe_2026_b (user test-user-omnivibe-2, seeded by this run for cross-user isolation tests).",
+  "seed_data_creation": "Seeded second user `test-user-omnivibe-2` with session token `test_session_omnivibe_2026_b` in test_database (users + user_sessions collections) for cross-user ownership tests. Triggered real LLM generations for PRD, screens, schemas, testing checklist, and build_prompt on the seeded FitTrack project — these now exist in DB. Also bumped PRD to version >= 5 via the editor save test.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test suite at /app/backend/tests/test_omnivibe_backend.py runs in ~4.5 min (real gpt-5.5 calls). Cross-user fixtures expect both seeded users from /app/memory/test_credentials.md plus the second user seeded by this iteration. The ingress timeout (~100s) is the main risk for any new long-running AI endpoints. Use direct localhost:8001 when you need to bypass the proxy.",
+  "rca of the issue": "Long-running AI generations: ingress (Cloudflare/edge proxy) closes the upstream after ~100s and returns its own 502 HTML page. Reproduced by hitting POST /api/projects/{id}/generate/build_prompt via the public URL (502) vs http://localhost:8001 (200, 89s). Mitigation options: (1) async background task + polling endpoint, (2) split the build_prompt generation into smaller LLM calls, (3) on frontend, after a 502/504 on a generate call, automatically re-fetch the corresponding GET to recover state since the backend usually finishes."
+}
