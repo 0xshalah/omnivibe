@@ -135,6 +135,8 @@ async def get_prd(project_id: str, user: dict = Depends(get_current_user)):
 async def save_prd(project_id: str, payload: PRDUpdate, user: dict = Depends(get_current_user)):
     await get_owned_project(project_id, user)
     latest = await db.prd_documents.find_one({"project_id": project_id}, {"_id": 0}, sort=[("version", -1)])
+    if latest and latest["content_markdown"] == payload.content_markdown:
+        return latest
     doc = {
         "prd_id": new_id("prd_"),
         "project_id": project_id,
@@ -215,6 +217,8 @@ async def toggle_checklist_item(
     user: dict = Depends(get_current_user),
 ):
     await get_owned_project(project_id, user)
+    if checklist_type not in ("testing", "deployment"):
+        raise HTTPException(status_code=400, detail="Checklist type must be 'testing' or 'deployment'")
     result = await db.checklists.update_one(
         {"project_id": project_id, "checklist_type": checklist_type, "items.item_id": item_id},
         {"$set": {"items.$.checked": payload.checked, "updated_at": now_iso()}},

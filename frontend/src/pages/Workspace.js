@@ -44,6 +44,23 @@ const TABS = [
 
 const BLUEPRINT_STEPS = ["prd", "features", "screens", "apis", "schemas", "testing", "deployment"];
 
+const ARTIFACT_GET = {
+  prd: (pid) => `/projects/${pid}/prd`,
+  features: (pid) => `/projects/${pid}/features`,
+  screens: (pid) => `/projects/${pid}/screens`,
+  apis: (pid) => `/projects/${pid}/api-plans`,
+  schemas: (pid) => `/projects/${pid}/schemas`,
+  testing: (pid) => `/projects/${pid}/checklists/testing`,
+  deployment: (pid) => `/projects/${pid}/checklists/deployment`,
+  build_prompt: (pid) => `/projects/${pid}/build-prompt`,
+};
+
+const artifactTimestamp = (data) => {
+  if (!data) return null;
+  if (Array.isArray(data)) return data.length ? data[0].created_at : null;
+  return data.updated_at || data.created_at;
+};
+
 export default function Workspace() {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -128,8 +145,42 @@ export default function Workspace() {
     else if (data.type === "build_prompt") setBuildPrompt(data.build_prompt);
   }, []);
 
+  const applyFetched = useCallback((type, data) => {
+    if (type === "prd") setPrd(data);
+    else if (type === "features") setFeatures(data || []);
+    else if (type === "screens") setScreens(data || []);
+    else if (type === "apis") setApis(data || []);
+    else if (type === "schemas") setSchemas(data || []);
+    else if (type === "testing") setTesting(data);
+    else if (type === "deployment") setDeployment(data);
+    else if (type === "build_prompt") setBuildPrompt(data);
+  }, []);
+
+  // The edge proxy can drop long AI requests (~100s) with a 502 even though the
+  // backend finishes and persists the result. Poll the GET endpoint to recover.
+  const recoverGeneration = useCallback(
+    async (type, startedAtMs) => {
+      for (let attempt = 0; attempt < 12; attempt++) {
+        await new Promise((r) => setTimeout(r, 10000));
+        try {
+          const res = await api.get(ARTIFACT_GET[type](projectId));
+          const ts = artifactTimestamp(res.data);
+          if (ts && new Date(ts).getTime() >= startedAtMs - 60000) {
+            applyFetched(type, res.data);
+            return true;
+          }
+        } catch {
+          // keep polling
+        }
+      }
+      return false;
+    },
+    [projectId, applyFetched]
+  );
+
   const generateSection = useCallback(
     async (type, mode = "generate", quiet = false) => {
+      const startedAtMs = Date.now();
       setGenerating((g) => ({ ...g, [type]: true }));
       try {
         const res = await api.post(`/projects/${projectId}/generate/${type}`, { mode });
@@ -139,13 +190,24 @@ export default function Workspace() {
         if (!quiet) toast.success(`${GEN_LABELS[type]} generated`);
         return true;
       } catch (e) {
-        toast.error(e.response?.data?.detail || `Failed to generate ${GEN_LABELS[type]}. Please try again.`);
+        const backendDetail = e.response?.data?.detail;
+        if (!backendDetail) {
+          if (!quiet) toast.info(`${GEN_LABELS[type]} is taking longer than usual — still working…`);
+          const recovered = await recoverGeneration(type, startedAtMs);
+          if (recovered) {
+            refreshProject();
+            refreshHistory();
+            if (!quiet) toast.success(`${GEN_LABELS[type]} generated`);
+            return true;
+          }
+        }
+        toast.error(backendDetail || `Failed to generate ${GEN_LABELS[type]}. Please try again.`);
         return false;
       } finally {
         setGenerating((g) => ({ ...g, [type]: false }));
       }
     },
-    [projectId, applyResult, refreshProject, refreshHistory]
+    [projectId, applyResult, applyFetched, recoverGeneration, refreshProject, refreshHistory]
   );
 
   const generateBlueprint = useCallback(async () => {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { GitBranch, KanbanSquare, ListChecks } from "lucide-react";
 import { FEATURE_COLUMNS, PRIORITY_STYLES } from "@/lib/labels";
 import { EmptyState } from "@/components/EmptyState";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function FeatureCard({ feature, onOpen, onDragStart }) {
@@ -115,8 +115,8 @@ export default function RoadmapTab({ features, generating, onGenerate, onUpdateF
             <>
               <DialogHeader>
                 <DialogTitle className="font-heading text-lg font-bold">{selectedFeature.title}</DialogTitle>
+                <DialogDescription>{selectedFeature.description}</DialogDescription>
               </DialogHeader>
-              <p className="text-sm text-muted-foreground">{selectedFeature.description}</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">Status</p>
