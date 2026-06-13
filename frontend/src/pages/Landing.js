@@ -2,12 +2,12 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
-  CheckCheck,
-  Database,
-  FileText,
-  KanbanSquare,
-  Monitor,
-  Sparkles,
+  Code2,
+  Eye,
+  GitBranch,
+  MessageSquare,
+  Package,
+  Rocket,
   Zap,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -17,41 +17,41 @@ const HERO_IMG =
 
 const FEATURES = [
   {
-    icon: FileText,
-    title: "AI PRD Generator",
-    desc: "Turn a rough idea into a complete, editable PRD — goals, user stories, requirements, acceptance criteria.",
+    icon: Code2,
+    title: "Generate full codebases",
+    desc: "Real React + Vite + Tailwind + FastAPI + MongoDB files — not just docs. Every file is run-ready.",
   },
   {
-    icon: KanbanSquare,
-    title: "Feature Roadmap Board",
-    desc: "AI-generated build modules on a Kanban board with priorities, dependencies, and acceptance criteria.",
+    icon: Eye,
+    title: "Live preview, instantly",
+    desc: "Your generated frontend executes live inside an iframe. Route map and screen mockups included.",
   },
   {
-    icon: Monitor,
-    title: "Screen Planner",
-    desc: "Screen-by-screen plans with components, user actions, and empty, error, and loading states.",
+    icon: MessageSquare,
+    title: "Edit with AI chat",
+    desc: "Ask 'add a settings page' or 'make it more premium' — see the patch preview before applying.",
   },
   {
-    icon: Database,
-    title: "API & Schema Planner",
-    desc: "FastAPI endpoint plans and MongoDB collection drafts with fields, types, and example values.",
+    icon: GitBranch,
+    title: "Patch diff & rollback",
+    desc: "Every AI change is a reviewable patch with line-level diff, apply/reject, and one-click rollback.",
   },
   {
-    icon: CheckCheck,
-    title: "Testing & Deployment Checklists",
-    desc: "Practical, app-specific checklists so nothing breaks when you ship.",
+    icon: Package,
+    title: "Build checks & export",
+    desc: "Static build-readiness checks, ZIP download, Markdown bundle and copy-to-clipboard for each file.",
   },
   {
-    icon: Sparkles,
-    title: "Emergent-Ready Build Prompt",
-    desc: "One polished prompt with everything an AI builder needs — paste it into Emergent and build.",
+    icon: Rocket,
+    title: "Deploy with Emergent",
+    desc: "When your build is green, ship it to Emergent — or self-host with the exported codebase.",
   },
 ];
 
 const STEPS = [
-  { n: "01", title: "Describe your idea", desc: "A sentence or a paragraph — rough is fine." },
-  { n: "02", title: "Generate the blueprint", desc: "PRD, roadmap, screens, APIs, schema, and checklists in minutes." },
-  { n: "03", title: "Ship with Emergent", desc: "Export docs or paste the build prompt into Emergent and watch it build." },
+  { n: "01", title: "Describe your app", desc: "Idea, target users, features, visual style. Rough is fine." },
+  { n: "02", title: "Generate the codebase", desc: "OmniVibe writes every file: pages, components, API routes, schemas." },
+  { n: "03", title: "Edit, preview, deploy", desc: "Chat with AI to evolve the app, preview live, then ship to Emergent." },
 ];
 
 export default function Landing() {
@@ -101,15 +101,15 @@ export default function Landing() {
             className="max-w-3xl"
           >
             <p className="text-xs font-medium uppercase tracking-[0.25em] text-[#FF4400]">
-              AI build orchestration for vibe coders
+              AI full-stack code builder
             </p>
             <h1 className="mt-5 font-heading text-4xl font-bold leading-none tracking-tight sm:text-5xl lg:text-6xl">
-              From rough idea to
-              <span className="text-[#FF4400]"> build-ready blueprint.</span>
+              Generate, edit, preview & deploy
+              <span className="text-[#FF4400]"> full-stack apps with AI.</span>
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-zinc-400 md:text-lg">
-              OmniVibe turns messy app ideas into structured PRDs, feature roadmaps, screen plans, API specs,
-              database schemas, checklists — and a final Emergent-ready build prompt.
+              OmniVibe turns a sentence into a working React + FastAPI + MongoDB codebase. Edit files in a
+              real IDE, modify with natural language, preview live, then ship.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-4">
               <button
@@ -117,14 +117,14 @@ export default function Landing() {
                 data-testid="hero-login-button"
                 className="inline-flex items-center gap-2 rounded-md bg-[#FF4400] px-6 py-3 text-sm font-medium text-white transition-all hover:bg-[#E63D00] ai-glow"
               >
-                {user ? "Open dashboard" : "Start planning free"}
+                {user ? "Open dashboard" : "Generate your first app"}
                 <ArrowRight className="h-4 w-4" strokeWidth={2} />
               </button>
               <a
                 href="#features"
                 className="rounded-md border border-white/15 px-6 py-3 text-sm text-zinc-300 transition-colors hover:bg-white/5"
               >
-                See what it generates
+                See what it builds
               </a>
             </div>
           </motion.div>
@@ -135,7 +135,7 @@ export default function Landing() {
       <section id="features" className="mx-auto max-w-6xl px-6 py-24">
         <p className="text-xs font-medium uppercase tracking-[0.25em] text-zinc-500">What you get</p>
         <h2 className="mt-3 max-w-xl font-heading text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
-          A complete planning layer for AI-built apps
+          A full IDE, AI code editor & deploy pipeline
         </h2>
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f, i) => (
@@ -172,10 +172,10 @@ export default function Landing() {
           </div>
           <div className="mt-16 rounded-xl border border-white/10 bg-[#18181B] p-8 text-center sm:p-12">
             <h3 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
-              Stop prompting blind. Plan first.
+              Type an idea. Get a real codebase.
             </h3>
             <p className="mx-auto mt-3 max-w-md text-sm text-zinc-400">
-              Sign in with Google and generate your first project blueprint in minutes.
+              Sign in with Google and generate your first full-stack app in under three minutes.
             </p>
             <button
               onClick={handleLogin}
@@ -191,7 +191,7 @@ export default function Landing() {
 
       <footer className="border-t border-white/5 py-8">
         <p className="text-center text-xs text-zinc-600">
-          OmniVibe — AI project planning for vibe-coded apps. Built on Emergent.
+          OmniVibe — AI full-stack code builder. Built on Emergent.
         </p>
       </footer>
     </div>

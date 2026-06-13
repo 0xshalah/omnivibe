@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { motion } from "framer-motion";
-import { FolderPlus, Layers, Loader2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { FileCode, FolderPlus, Loader2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { STATUS_LABELS, STATUS_STYLES } from "@/lib/labels";
+import { BUILD_STATUS_LABELS, BUILD_STATUS_STYLES } from "@/lib/codeLabels";
 import AppSidebar from "@/components/AppSidebar";
 import NewProjectDialog from "@/components/NewProjectDialog";
 import {
@@ -61,29 +62,25 @@ function ProjectCard({ project, index, onOpen, onDelete }) {
       <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm text-muted-foreground">
         {project.description || project.idea}
       </p>
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Progress</span>
-          <span data-testid={`project-progress-${project.project_id}`}>{project.progress}%</span>
-        </div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-[#FF4400] transition-all"
-            style={{ width: `${project.progress}%` }}
-          />
-        </div>
-      </div>
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-4 flex flex-wrap gap-1.5">
         <span className={`rounded-md px-2 py-1 text-xs font-medium ${STATUS_STYLES[project.status] || STATUS_STYLES.draft}`}>
           {STATUS_LABELS[project.status] || project.status}
         </span>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Layers className="h-3.5 w-3.5" strokeWidth={1.5} />
-            {project.feature_count}
-          </span>
-          <span>{formatDistanceToNow(new Date(project.updated_at), { addSuffix: true })}</span>
-        </div>
+        <span
+          className={`rounded-md border px-2 py-1 text-xs font-medium ${
+            BUILD_STATUS_STYLES[project.build_status] || "bg-muted text-muted-foreground border-border"
+          }`}
+          data-testid={`project-build-status-${project.project_id}`}
+        >
+          {BUILD_STATUS_LABELS[project.build_status] || "Not generated"}
+        </span>
+      </div>
+      <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5" data-testid={`project-file-count-${project.project_id}`}>
+          <FileCode className="h-3.5 w-3.5" strokeWidth={1.5} />
+          {project.file_count || 0} files
+        </span>
+        <span>{formatDistanceToNow(new Date(project.updated_at), { addSuffix: true })}</span>
       </div>
     </motion.div>
   );
@@ -161,7 +158,7 @@ export default function Dashboard() {
               </div>
               <h3 className="mt-5 font-heading text-xl font-bold">No projects yet</h3>
               <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                Create your first project and OmniVibe will turn your rough idea into a complete build blueprint.
+                Generate your first app and OmniVibe will turn your idea into a complete, editable codebase.
               </p>
               <button
                 onClick={() => openDialog(true)}
@@ -169,7 +166,7 @@ export default function Dashboard() {
                 className="mt-6 inline-flex items-center gap-2 rounded-md bg-[#FF4400] px-5 py-2.5 text-sm font-medium text-white transition-all hover:bg-[#E63D00] ai-glow"
               >
                 <Plus className="h-4 w-4" strokeWidth={2} />
-                Create your first project
+                Generate your first app
               </button>
             </div>
           ) : (

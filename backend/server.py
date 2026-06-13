@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response
 from starlette.middleware.cors import CORSMiddleware
 
 import ai_service
+import code_service
 import export_service
 from auth import get_current_user, router as auth_router
 from database import client, db
@@ -12,9 +13,13 @@ from models import (
     FEATURE_PRIORITIES,
     FEATURE_STATUSES,
     PROJECT_STATUSES,
+    ChatMessageRequest,
     ChecklistItemUpdate,
     FeatureUpdate,
+    FileRename,
+    FileUpsert,
     GenerateRequest,
+    PatchRequest,
     PRDUpdate,
     ProjectCreate,
     ProjectUpdate,
@@ -61,20 +66,32 @@ async def list_projects(user: dict = Depends(get_current_user)):
     for p in projects:
         p["progress"] = await compute_progress(p["project_id"])
         p["feature_count"] = await db.feature_modules.count_documents({"project_id": p["project_id"]})
+        p["file_count"] = await db.project_files.count_documents({"project_id": p["project_id"]})
+        bc = await db.build_checks.find_one({"project_id": p["project_id"]}, {"_id": 0, "status": 1})
+        p["build_status"] = (bc or {}).get("status", p.get("build_status", "not_ready"))
     return projects
 
 
 @api_router.post("/projects")
 async def create_project(payload: ProjectCreate, user: dict = Depends(get_current_user)):
+    body = payload.model_dump()
     doc = {
         "project_id": new_id("proj_"),
         "user_id": user["user_id"],
-        "title": payload.title.strip(),
-        "idea": payload.idea.strip(),
-        "description": (payload.description or "").strip(),
-        "target_users": (payload.target_users or "").strip(),
-        "project_type": payload.project_type or "Web App",
+        "title": body["title"].strip(),
+        "idea": body["idea"].strip(),
+        "description": (body.get("description") or "").strip(),
+        "target_users": (body.get("target_users") or "").strip(),
+        "project_type": body.get("project_type") or "Web App",
+        "visual_style": (body.get("visual_style") or "").strip(),
+        "required_features": (body.get("required_features") or "").strip(),
+        "integrations": (body.get("integrations") or "").strip(),
+        "auth_required": bool(body.get("auth_required", True)),
+        "database_required": bool(body.get("database_required", True)),
+        "deployment_target": body.get("deployment_target") or "Emergent",
         "status": "draft",
+        "build_status": "not_ready",
+        "file_count": 0,
         "created_at": now_iso(),
         "updated_at": now_iso(),
     }
@@ -117,6 +134,11 @@ async def delete_project(project_id: str, user: dict = Depends(get_current_user)
         db.checklists,
         db.build_prompts,
         db.generation_history,
+        db.project_files,
+        db.patch_history,
+        db.code_generations,
+        db.chat_messages,
+        db.build_checks,
     ):
         await collection.delete_many({"project_id": project_id})
     return {"ok": True}
@@ -263,6 +285,220 @@ async def generate(
         updates["status"] = "planning"
     await db.projects.update_one({"project_id": project_id}, {"$set": updates})
     return result
+
+
+# ---------------------------------------------------------------- code builder
+
+
+@api_router.post("/projects/{project_id}/codebase/generate")
+async def codebase_generate(project_id: str, user: dict = Depends(get_current_user)):
+    project = await get_owned_project(project_id, user)
+    try:
+        rec = await code_service.start_codebase_generation(project)
+    except code_service.CodeGenError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    return {"status": rec["status"], "generation_id": rec["generation_id"]}
+
+
+@api_router.get("/projects/{project_id}/codebase")
+async def codebase_summary(project_id: str, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    rec = await code_service.latest_codebase_generation(project_id)
+    if rec:
+        # Live file count
+        rec["live_file_count"] = await db.project_files.count_documents({"project_id": project_id})
+    return rec
+
+
+@api_router.get("/projects/{project_id}/files/tree")
+async def files_tree(project_id: str, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    files = await code_service.list_files(project_id, with_content=False)
+    return {"tree": code_service.build_tree(files), "count": len(files)}
+
+
+@api_router.get("/projects/{project_id}/files")
+async def files_list(project_id: str, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    return await code_service.list_files(project_id, with_content=False)
+
+
+@api_router.get("/projects/{project_id}/files/content")
+async def file_content(project_id: str, path: str, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    f = await code_service.get_file(project_id, path)
+    if not f:
+        raise HTTPException(status_code=404, detail="File not found")
+    return f
+
+
+@api_router.put("/projects/{project_id}/files")
+async def file_upsert(project_id: str, payload: FileUpsert, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    doc = await code_service.upsert_file(project_id, payload.path, payload.content, source="user")
+    await touch_project(project_id)
+    return doc
+
+
+@api_router.delete("/projects/{project_id}/files")
+async def file_delete(project_id: str, path: str, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    ok = await code_service.delete_file(project_id, path)
+    if not ok:
+        raise HTTPException(status_code=404, detail="File not found")
+    await touch_project(project_id)
+    return {"ok": True}
+
+
+@api_router.post("/projects/{project_id}/files/rename")
+async def file_rename(project_id: str, payload: FileRename, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    existing = await code_service.get_file(project_id, payload.old_path)
+    if not existing:
+        raise HTTPException(status_code=404, detail="File not found")
+    new = await code_service.upsert_file(project_id, payload.new_path, existing.get("content", ""), source="user")
+    if payload.new_path.strip().lstrip("/") != payload.old_path.strip().lstrip("/"):
+        await code_service.delete_file(project_id, payload.old_path)
+    await touch_project(project_id)
+    return new
+
+
+# Patch workflow
+
+
+@api_router.post("/projects/{project_id}/patch")
+async def patch_create(project_id: str, payload: PatchRequest, user: dict = Depends(get_current_user)):
+    project = await get_owned_project(project_id, user)
+    await code_service.add_chat_message(project_id, "user", payload.instruction)
+    try:
+        patch = await code_service.start_patch(project, payload.instruction)
+    except code_service.CodeGenError as exc:
+        await code_service.add_chat_message(project_id, "assistant", f"Failed to plan changes: {exc}", {"error": True})
+        raise HTTPException(status_code=502, detail=str(exc))
+    return patch
+
+
+@api_router.get("/projects/{project_id}/patches")
+async def patches_list(project_id: str, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    return await code_service.list_patches(project_id)
+
+
+@api_router.get("/projects/{project_id}/patches/{patch_id}")
+async def patch_detail(project_id: str, patch_id: str, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    patch = await code_service.get_patch(project_id, patch_id)
+    if not patch:
+        raise HTTPException(status_code=404, detail="Patch not found")
+    # Attach before content for diff viewer
+    before = patch.get("before_snapshots", {})
+    for f in patch.get("files_to_update", []):
+        f["before"] = before.get(f["path"], "")
+    for f in patch.get("files_to_create", []):
+        f["before"] = ""
+    return patch
+
+
+@api_router.post("/projects/{project_id}/patches/{patch_id}/apply")
+async def patch_apply(project_id: str, patch_id: str, user: dict = Depends(get_current_user)):
+    project = await get_owned_project(project_id, user)
+    try:
+        result = await code_service.apply_patch(project_id, patch_id)
+    except code_service.CodeGenError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    # Re-run build check
+    try:
+        await code_service.run_build_check(project_id, project)
+    except code_service.CodeGenError:
+        pass
+    return result
+
+
+@api_router.post("/projects/{project_id}/patches/{patch_id}/reject")
+async def patch_reject(project_id: str, patch_id: str, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    try:
+        return await code_service.reject_patch(project_id, patch_id)
+    except code_service.CodeGenError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@api_router.post("/projects/{project_id}/patches/{patch_id}/rollback")
+async def patch_rollback(project_id: str, patch_id: str, user: dict = Depends(get_current_user)):
+    project = await get_owned_project(project_id, user)
+    try:
+        result = await code_service.rollback_patch(project_id, patch_id)
+    except code_service.CodeGenError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    try:
+        await code_service.run_build_check(project_id, project)
+    except code_service.CodeGenError:
+        pass
+    return result
+
+
+# Build readiness
+
+
+@api_router.post("/projects/{project_id}/build-check")
+async def build_check_run(project_id: str, user: dict = Depends(get_current_user)):
+    project = await get_owned_project(project_id, user)
+    try:
+        return await code_service.run_build_check(project_id, project)
+    except code_service.CodeGenError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@api_router.get("/projects/{project_id}/build-check")
+async def build_check_get(project_id: str, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    return await code_service.latest_build_check(project_id)
+
+
+# Chat
+
+
+@api_router.get("/projects/{project_id}/chat")
+async def chat_list(project_id: str, user: dict = Depends(get_current_user)):
+    await get_owned_project(project_id, user)
+    return await code_service.list_chat_messages(project_id)
+
+
+# Codebase export
+
+
+@api_router.get("/projects/{project_id}/codebase/export/zip")
+async def export_codebase_zip(project_id: str, user: dict = Depends(get_current_user)):
+    project = await get_owned_project(project_id, user)
+    try:
+        data = await code_service.export_zip(project_id, project["title"])
+    except code_service.CodeGenError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    import re as _re
+
+    slug = _re.sub(r"[^a-z0-9]+", "-", project["title"].lower()).strip("-") or "omnivibe-app"
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{slug}.zip"'},
+    )
+
+
+@api_router.get("/projects/{project_id}/codebase/export/bundle")
+async def export_codebase_bundle(project_id: str, user: dict = Depends(get_current_user)):
+    project = await get_owned_project(project_id, user)
+    try:
+        md = await code_service.export_markdown_bundle(project_id, project["title"])
+    except code_service.CodeGenError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    import re as _re
+
+    slug = _re.sub(r"[^a-z0-9]+", "-", project["title"].lower()).strip("-") or "omnivibe-app"
+    return Response(
+        content=md,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{slug}-codebase.md"'},
+    )
 
 
 # ---------------------------------------------------------------- export

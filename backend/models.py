@@ -24,6 +24,12 @@ class ProjectCreate(BaseModel):
     description: Optional[str] = Field(default="", max_length=2000)
     target_users: Optional[str] = Field(default="", max_length=1000)
     project_type: Optional[str] = Field(default="Web App", max_length=100)
+    visual_style: Optional[str] = Field(default="", max_length=500)
+    required_features: Optional[str] = Field(default="", max_length=2000)
+    integrations: Optional[str] = Field(default="", max_length=500)
+    auth_required: Optional[bool] = Field(default=True)
+    database_required: Optional[bool] = Field(default=True)
+    deployment_target: Optional[str] = Field(default="Emergent", max_length=100)
 
 
 class ProjectUpdate(BaseModel):
@@ -32,7 +38,31 @@ class ProjectUpdate(BaseModel):
     description: Optional[str] = Field(default=None, max_length=2000)
     target_users: Optional[str] = Field(default=None, max_length=1000)
     project_type: Optional[str] = Field(default=None, max_length=100)
+    visual_style: Optional[str] = Field(default=None, max_length=500)
+    required_features: Optional[str] = Field(default=None, max_length=2000)
+    integrations: Optional[str] = Field(default=None, max_length=500)
+    auth_required: Optional[bool] = None
+    database_required: Optional[bool] = None
+    deployment_target: Optional[str] = Field(default=None, max_length=100)
     status: Optional[str] = None
+
+
+class FileUpsert(BaseModel):
+    path: str = Field(min_length=1, max_length=500)
+    content: str = Field(default="")
+
+
+class FileRename(BaseModel):
+    old_path: str = Field(min_length=1, max_length=500)
+    new_path: str = Field(min_length=1, max_length=500)
+
+
+class PatchRequest(BaseModel):
+    instruction: str = Field(min_length=4, max_length=3000)
+
+
+class ChatMessageRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=4000)
 
 
 class PRDUpdate(BaseModel):

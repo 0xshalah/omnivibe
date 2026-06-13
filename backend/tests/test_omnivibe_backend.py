@@ -175,7 +175,7 @@ class TestGeneration:
         assert r.status_code in (502, 504), \
             f"Unexpected status: {r.status_code} {r.text[:300]}"
         persisted = get_fn()
-        assert persisted, f"Generation failed AND nothing persisted in DB"
+        assert persisted, "Generation failed AND nothing persisted in DB"
         validate_fn(persisted)
         return persisted
 
